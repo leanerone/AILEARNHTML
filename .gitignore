@@ -1,0 +1,6 @@
+assessment.db
+__pycache__/
+*.pyc
+.venv/
+venv/
+_tmp_check.js

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EAP 工程师 AI 化能力测评</title>
+<style>
+  /* ============ 主题变量（改配色只动这里） ============ */
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --text: #1c2333;
+    --muted: #5d6774;
+    --border: #e2e6ed;
+    --primary: #3b5bdb;
+    --primary-weak: #e9eefb;
+    --ok: #2f9e44;
+    --warn: #e8590c;
+    --danger: #e03131;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181d; --card: #1f2228; --text: #e8eaee; --muted: #9aa3b0;
+      --border: #33373f; --primary: #748ffc; --primary-weak: #2b3352;
+      --ok: #69db7c; --warn: #ffa94d; --danger: #ff6b6b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    font-size: 15px; line-height: 1.7;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 0 0 8px; }
+  h3 { font-size: 16px; margin: 18px 0 8px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px; margin: 14px 0;
+  }
+  button {
+    font: inherit; cursor: pointer; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    padding: 7px 16px; transition: filter .15s;
+  }
+  button:hover { filter: brightness(.96); }
+  button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  button.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  button.ghost:hover { color: var(--text); border-color: var(--border); }
+  button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  .row button { flex: none; }
+
+  /* 进度条 */
+  .progress { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 12px 0; }
+  .progress > div { height: 100%; width: 0%; background: var(--primary); transition: width .3s; border-radius: 99px; }
+
+  /* 导航 pills */
+  .nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
+  .nav button { border-radius: 99px; padding: 5px 14px; font-size: 13px; color: var(--muted); }
+  .nav button.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* 面板与题目 */
+  .panel { display: none; }
+  .panel.active { display: block; animation: fade .2s; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .qblock { margin: 18px 0 22px; }
+  .qstem { margin-bottom: 8px; }
+  .qstem b { color: var(--primary); margin-right: 4px; }
+  .opt { display: flex; gap: 9px; align-items: flex-start; padding: 8px 12px; margin: 4px 0;
+         border: 1px solid var(--border); border-radius: 9px; cursor: pointer; }
+  .opt:hover { background: var(--primary-weak); }
+  .opt input { margin-top: 4px; accent-color: var(--primary); flex: none; }
+  textarea, select, input[type="number"] {
+    font: inherit; width: 100%; color: var(--text); background: var(--card);
+    border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px;
+  }
+  input[type="number"] { width: 120px; }
+  textarea:focus, select:focus, .opt:has(input:focus) { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .sr-item { margin: 12px 0; }
+  .sr-item label { display: block; margin-bottom: 2px; }
+  .sr-item .val { color: var(--primary); font-weight: 600; }
+  input[type="range"] { width: 100%; accent-color: var(--primary); }
+  .meta-item { margin: 16px 0; }
+  .meta-item > div:first-child { margin-bottom: 4px; font-weight: 500; }
+
+  /* 完成页 / 复盘页共用 */
+  .score-row { margin: 10px 0; }
+  .score-row .bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+  .score-row .bar > div { height: 100%; background: var(--primary); border-radius: 99px; }
+  #fin-json { font-family: Consolas, Menlo, monospace; font-size: 12px; }
+  #fin-status, #save-status { min-height: 20px; }
+  footer { text-align: center; margin-top: 30px; }
+
+  /* 复盘页 */
+  .hist-row {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
+    margin: 8px 0; cursor: pointer;
+  }
+  .hist-row:hover { background: var(--primary-weak); }
+  .hist-row .tag { background: var(--primary-weak); color: var(--primary); border-radius: 99px;
+                   padding: 1px 10px; font-size: 12px; }
+  .delta { font-size: 12px; padding: 1px 8px; border-radius: 99px; }
+  .delta.up { color: var(--ok); }
+  .delta.down { color: var(--warn); }
+  .delta.flat { color: var(--muted); }
+  .wq { border-left: 3px solid var(--warn); padding: 6px 12px; margin: 10px 0; }
+  .wq .ref { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .kv { display: flex; gap: 8px; margin: 2px 0; }
+  .kv .k { color: var(--muted); flex: none; width: 110px; }
+  .trend-wrap { overflow-x: auto; }
+  .trend-wrap svg { min-width: 480px; width: 100%; height: auto; }
+  .legend { display: flex; gap: 16px; margin: 4px 0 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <!-- 开场说明 -->
+  <div class="card" id="intro">
+    <h1 id="intro-title"></h1>
+    <p id="intro-text"></p>
+    <p class="muted" id="intro-note"></p>
+    <div class="row">
+      <button class="primary" id="btn-start" type="button">开始测评</button>
+      <span class="muted" id="progress-label">已作答 0 / 0 题</span>
+    </div>
+  </div>
+  <div class="progress" id="progress" role="progressbar" aria-label="答题进度"
+       aria-valuenow="0" aria-valuemin="0"><div></div></div>
+
+  <nav class="nav" id="nav" aria-label="测评部分导航"></nav>
+  <main id="panels"></main>
+
+  <!-- 完成页（结构固定，内容由 JS 填充） -->
+  <section class="panel" id="panel-finish" aria-labelledby="navbtn-panel-finish">
+    <div class="card">
+      <h2>完成 · 提交答卷</h2>
+      <p class="muted" id="fin-summary">—</p>
+      <div id="fin-scores"></div>
+      <p class="muted">客观题预评分仅基于已答客观题；简答题与最终能力画像由 ZCode 批改后给出。</p>
+      <div class="row">
+        <button class="primary" id="btn-save" type="button">保存本次记录</button>
+        <button id="btn-copy" type="button">复制答卷（发给 ZCode 批改）</button>
+        <button id="btn-dl" type="button">下载答卷</button>
+        <button class="ghost" id="btn-clear" type="button">清空答卷</button>
+      </div>
+      <p id="save-status" role="status"></p>
+      <p id="fin-status" role="status"></p>
+      <label class="muted" for="fin-json">答卷文本（复制失败时可全选手动复制）</label>
+      <textarea id="fin-json" rows="10" readonly spellcheck="false"></textarea>
+    </div>
+  </section>
+
+  <!-- 复盘页 -->
+  <section class="panel" id="panel-history" aria-labelledby="navbtn-panel-history">
+    <div class="card">
+      <h2>复盘 · 历次测评记录</h2>
+      <p class="muted" id="hist-hint">读取中…</p>
+      <div id="hist-trend"></div>
+      <div id="hist-list"></div>
+      <div class="row"><button class="ghost" id="btn-hist-refresh" type="button">刷新记录</button></div>
+    </div>
+    <div class="card" id="hist-detail" style="display:none"></div>
+  </section>
+
+  <footer class="muted" id="footer"></footer>
+</div>
+
+<script src="questions.js"></script>
+<script>
+(function () {
+  "use strict";
+  var cfg = window.ASSESSMENT;
+  var root = document.getElementById("app");
+  var nav = document.getElementById("nav");
+  var panels = document.getElementById("panels");
+  var STORE_KEY = "eap-assess-v1";
+  var answers = {};
+  var startedAt = null;
+  var saveTimer = null;
+  var clearArmed = false;
+  var currentTab = "intro";
+  var histCache = [];          // 复盘记录列表缓存（id 倒序）
+  var fileMode = location.protocol === "file:";   // 双击打开时没有后端
+
+  /* ---------- 基础工具 ---------- */
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function allQuestions() {
+    var list = [];
+    cfg.sections.forEach(function (s) { s.questions.forEach(function (q) { list.push(q); }); });
+    return list;
+  }
+  function scoredTotal() { return allQuestions().length; }
+  function api(path, opts) { return fetch(path, opts); }
+
+  /* ---------- 渲染 ---------- */
+  function render() {
+    document.title = cfg.meta.title;
+    document.getElementById("intro-title").textContent = cfg.meta.title;
+    document.getElementById("intro-text").textContent = cfg.meta.intro;
+    document.getElementById("intro-note").textContent =
+      "作答自动保存在本机浏览器，可分几次完成。完成后在「完成」页保存记录（进数据库）或复制答卷发给 ZCode 批改。";
+    document.getElementById("footer").textContent =
+      cfg.meta.title + " v" + cfg.meta.version + "（题库更新于 " + cfg.meta.updatedAt + "）· " + cfg.meta.footer;
+
+    addNavBtn("intro", "说明");
+    cfg.sections.forEach(function (s) { addNavBtn("panel-" + s.id, s.tab); });
+    addNavBtn("panel-self", "自评");
+    addNavBtn("panel-finish", "完成");
+    addNavBtn("panel-history", "复盘");
+
+    cfg.sections.forEach(function (sec) {
+      var p = document.createElement("section");
+      p.className = "panel"; p.id = "panel-" + sec.id;
+      var html = '<div class="card"><h2>' + esc(sec.name) + "</h2>" +
+                 '<p class="muted">' + esc(sec.intro) + "</p>";
+      sec.questions.forEach(function (q, i) { html += renderQuestion(q, i + 1); });
+      html += '<div class="row">' +
+              '<button type="button" class="ghost" data-goto="prev">← 上一部分</button>' +
+              '<button type="button" data-goto="next">下一部分 →</button></div></div>';
+      p.innerHTML = html;
+      panels.appendChild(p);
+    });
+
+    var self = document.createElement("section");
+    self.className = "panel"; self.id = "panel-self";
+    var sh = '<div class="card"><h2>自评与学习偏好</h2>' +
+             '<p class="muted">自评不计分，用于校准：0=没接触过，5=能独立交付。凭第一感觉打分。</p>';
+    cfg.selfAssessment.forEach(function (it) {
+      sh += '<div class="sr-item"><label for="' + it.id + '">' + esc(it.label) +
+            ' <span class="val" id="' + it.id + 'v">0</span>/5</label>' +
+            '<input type="range" min="0" max="5" step="1" value="0" id="' + it.id + '"></div>';
+    });
+    cfg.metaQuestions.forEach(function (m) {
+      sh += '<div class="meta-item"><div>' + esc(m.label) + "</div>";
+      if (m.type === "select") {
+        sh += '<select id="' + m.id + '"><option value="">请选择</option>' +
+              m.options.map(function (o) { return "<option>" + esc(o) + "</option>"; }).join("") + "</select>";
+      } else {
+        m.options.forEach(function (o) {
+          sh += '<label class="opt"><input type="radio" name="' + m.id + '" value="' + esc(o) + '"><span>' + esc(o) + "</span></label>";
+        });
+      }
+      sh += "</div>";
+    });
+    sh += '<div class="meta-item"><div>' + esc(cfg.extraQuestion.label) + "</div>" +
+          '<textarea id="' + cfg.extraQuestion.id + '" rows="2"></textarea></div>';
+    sh += '<div class="row">' +
+          '<button type="button" class="ghost" data-goto="prev">← 上一部分</button>' +
+          '<button type="button" class="primary" data-goto="finish">去完成页 →</button></div></div>';
+    self.innerHTML = sh;
+    panels.appendChild(self);
+  }
+
+  function addNavBtn(panelId, label) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.id = "navbtn-" + panelId;
+    b.textContent = label;
+    b.addEventListener("click", function () { showTab(panelId); });
+    nav.appendChild(b);
+  }
+
+  function renderQuestion(q, idx) {
+    var h = '<div class="qblock" data-qid="' + q.id + '"><div class="qstem"><b>' + idx + '.</b>' + esc(q.stem) + "</div>";
+    if (q.type === "short") {
+      h += '<textarea rows="3" id="ta-' + q.id + '" placeholder="凭现有理解作答即可，可不填"></textarea>';
+    } else {
+      (q.options || []).forEach(function (opt, oi) {
+        var letter = String.fromCharCode(97 + oi);
+        var inputType = q.type === "multi" ? "checkbox" : "radio";
+        h += '<label class="opt"><input type="' + inputType + '" name="' + q.id + '" value="' + letter + '">' +
+             "<span><b>" + letter + ".</b> " + esc(opt) + "</span></label>";
+      });
+    }
+    return h + "</div>";
+  }
+
+  /* ---------- 导航 ---------- */
+  function showTab(id) {
+    currentTab = id;
+    nav.querySelectorAll("button").forEach(function (b) {
+      b.classList.toggle("active", b.id === "navbtn-" + id);
+    });
+    document.querySelectorAll("#app .panel").forEach(function (p) {
+      p.classList.toggle("active", p.id === id);
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (id === "finish") refreshFinish();
+    if (id === "panel-history") loadHistory();
+    saveState();
+  }
+
+  panels.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-goto]");
+    if (!b) return;
+    var order = ["intro"].concat(
+      cfg.sections.map(function (s) { return "panel-" + s.id; }),
+      ["panel-self", "panel-finish"]);
+    var dir = b.getAttribute("data-goto");
+    if (dir === "finish") { showTab("panel-finish"); return; }
+    var i = order.indexOf(currentTab);
+    showTab(order[dir === "next" ? Math.min(i + 1, order.length - 1) : Math.max(i - 1, 0)]);
+  });
+
+  document.getElementById("btn-start").addEventListener("click", function () {
+    showTab("panel-" + cfg.sections[0].id);
+  });
+
+  /* ---------- 收集 / 恢复 ---------- */
+  function collect() {
+    allQuestions().forEach(function (q) {
+      if (q.type === "short") {
+        var ta = document.getElementById("ta-" + q.id);
+        answers[q.id] = ta && ta.value.trim() ? ta.value.trim().slice(0, 1200) : null;
+      } else {
+        var sel = Array.prototype.slice.call(root.querySelectorAll('input[name="' + q.id + '"]:checked'))
+                   .map(function (el) { return el.value; }).sort().join("");
+        answers[q.id] = sel || null;
+      }
+    });
+    cfg.selfAssessment.forEach(function (it) {
+      var el = document.getElementById(it.id);
+      answers[it.id] = el ? Number(el.value) : 0;
+    });
+    cfg.metaQuestions.forEach(function (m) {
+      if (m.type === "select") {
+        answers[m.id] = document.getElementById(m.id).value || null;
+      } else {
+        var el = root.querySelector('input[name="' + m.id + '"]:checked');
+        answers[m.id] = el ? el.value : null;
+      }
+    });
+    var ex = document.getElementById(cfg.extraQuestion.id);
+    answers[cfg.extraQuestion.id] = ex && ex.value.trim() ? ex.value.trim().slice(0, 800) : null;
+  }
+
+  function restore(data) {
+    if (!data || !data.answers) return;
+    answers = data.answers;
+    if (data.startedAt) startedAt = data.startedAt;
+    allQuestions().forEach(function (q) {
+      var v = answers[q.id];
+      if (!v) return;
+      if (q.type === "short") {
+        var ta = document.getElementById("ta-" + q.id);
+        if (ta) ta.value = v;
+      } else {
+        v.split("").forEach(function (letter) {
+          var el = root.querySelector('input[name="' + q.id + '"][value="' + letter + '"]');
+          if (el) el.checked = true;
+        });
+      }
+    });
+    cfg.selfAssessment.forEach(function (it) {
+      var el = document.getElementById(it.id);
+      if (el && typeof answers[it.id] === "number") {
+        el.value = answers[it.id];
+        document.getElementById(it.id + "v").textContent = answers[it.id];
+      }
+    });
+    cfg.metaQuestions.forEach(function (m) {
+      if (!answers[m.id]) return;
+      if (m.type === "select") document.getElementById(m.id).value = answers[m.id];
+      else {
+        var el = root.querySelector('input[name="' + m.id + '"][value="' + answers[m.id] + '"]');
+        if (el) el.checked = true;
+      }
+    });
+    if (answers[cfg.extraQuestion.id]) document.getElementById(cfg.extraQuestion.id).value = answers[cfg.extraQuestion.id];
+    updateProgress();
+  }
+
+  /* ---------- 进度 ---------- */
+  function updateProgress() {
+    var done = 0;
+    allQuestions().forEach(function (q) { if (answers[q.id]) done++; });
+    var total = scoredTotal();
+    document.getElementById("progress-label").textContent = "已作答 " + done + " / " + total + " 题";
+    var bar = document.getElementById("progress");
+    bar.setAttribute("aria-valuenow", done);
+    bar.setAttribute("aria-valuemax", total);
+    bar.firstElementChild.style.width = Math.round(done / total * 100) + "%";
+  }
+
+  /* ---------- 事件 ---------- */
+  function onChange(e) {
+    var t = e.target;
+    if (t.type === "range") document.getElementById(t.id + "v").textContent = t.value;
+    if (!startedAt) startedAt = Date.now();
+    collect();
+    updateProgress();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveState, 500);
+  }
+  root.addEventListener("input", onChange);
+  root.addEventListener("change", onChange);
+
+  /* ---------- 持久化（浏览器本地兜底，数据库为主） ---------- */
+  function saveState() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ answers: answers, startedAt: startedAt })); } catch (err) {}
+  }
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) restore(JSON.parse(raw));
+    } catch (err) {}
+  }
+
+  /* ---------- 导出 / 打分 ---------- */
+  function scoreBySection() {
+    return cfg.sections.map(function (sec) {
+      var total = 0, answered = 0, correct = 0;
+      sec.questions.forEach(function (q) {
+        if (q.type === "short") return;
+        total++;
+        if (answers[q.id]) {
+          answered++;
+          if (answers[q.id] === q.answer) correct++;
+        }
+      });
+      return { sectionId: sec.id, section: sec.name, total: total, answered: answered, correct: correct };
+    });
+  }
+
+  function buildExport() {
+    collect();
+    var done = 0;
+    allQuestions().forEach(function (q) { if (answers[q.id]) done++; });
+    var mins = startedAt ? Math.max(1, Math.round((Date.now() - startedAt) / 60000)) : 0;
+    return {
+      exportedAt: new Date().toLocaleString(),
+      quizVersion: cfg.meta.version,
+      minutesSpent: mins,
+      answeredOfTotal: done + " / " + scoredTotal(),
+      sectionScores: scoreBySection(),
+      answers: answers
+    };
+  }
+
+  function refreshFinish() {
+    var data = buildExport();
+    var answeredN = parseInt(data.answeredOfTotal, 10);
+    var missing = scoredTotal() - answeredN;
+    document.getElementById("fin-summary").textContent =
+      "用时约 " + data.minutesSpent + " 分钟，已作答 " + answeredN + " / " + scoredTotal() + " 题" +
+      (missing > 0 ? "（还有 " + missing + " 题未答，可回去补答，也可以直接提交）" : "，全部完成");
+    var h = "";
+    data.sectionScores.forEach(function (s) {
+      var pct = s.total ? Math.round(s.correct / s.total * 100) : 0;
+      h += '<div class="score-row"><div>' + esc(s.section) +
+           ' <span class="muted">客观题 ' + s.correct + " / " + s.total + "</span></div>" +
+           '<div class="bar"><div style="width:' + pct + '%"></div></div></div>';
+    });
+    document.getElementById("fin-scores").innerHTML = h;
+    document.getElementById("fin-json").value = JSON.stringify(data, null, 1);
+    return data;
+  }
+  function done(data) { return parseInt(data.answeredOfTotal, 10); }
+
+  /* ---------- 保存到数据库 ---------- */
+  document.getElementById("btn-save").addEventListener("click", function () {
+    var status = document.getElementById("save-status");
+    if (fileMode) {
+      status.style.color = "var(--warn)";
+      status.textContent = "当前是直接打开文件模式（无数据库）。请运行 python server.py 并从 http://127.0.0.1:8090 打开后再保存；现在仍可复制答卷。";
+      return;
+    }
+    var data = buildExport();
+    status.style.color = "var(--muted)";
+    status.textContent = "保存中…";
+    api("/api/attempts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function (res) {
+      status.style.color = "var(--ok)";
+      status.textContent = "已保存为记录 #" + res.id + "（" + res.savedAt + "），可在「复盘」页查看趋势与错题。";
+    }).catch(function () {
+      status.style.color = "var(--danger)";
+      status.textContent = "保存失败：后端未启动？请运行 python server.py 后重试；现在仍可复制答卷。";
+    });
+  });
+
+  document.getElementById("btn-copy").addEventListener("click", function () {
+    var json = JSON.stringify(buildExport(), null, 1);
+    var status = document.getElementById("fin-status");
+    function fallback() {
+      var ta = document.getElementById("fin-json");
+      ta.focus(); ta.select();
+      status.style.color = "var(--warn)";
+      status.textContent = "已全选文本框内容，请按 Ctrl+C 复制。";
+    }
+    try {
+      navigator.clipboard.writeText(json).then(function () {
+        status.style.color = "var(--ok)";
+        status.textContent = "已复制。请回到 ZCode 对话粘贴，我会配合 questions.js 逐题批改。";
+      }).catch(fallback);
+    } catch (err) { fallback(); }
+  });
+
+  document.getElementById("btn-dl").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(buildExport(), null, 1)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "eap-assessment-answers.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  });
+
+  document.getElementById("btn-clear").addEventListener("click", function () {
+    var b = document.getElementById("btn-clear");
+    if (!clearArmed) {
+      clearArmed = true; b.textContent = "再点一次确认清空";
+      setTimeout(function () { clearArmed = false; b.textContent = "清空答卷"; }, 4000);
+      return;
+    }
+    clearArmed = false; b.textContent = "清空答卷";
+    answers = {}; startedAt = null;
+    root.querySelectorAll("input[type=radio], input[type=checkbox]").forEach(function (el) { el.checked = false; });
+    root.querySelectorAll("textarea").forEach(function (el) { if (el.id !== "fin-json") el.value = ""; });
+    cfg.selfAssessment.forEach(function (it) {
+      document.getElementById(it.id).value = 0;
+      document.getElementById(it.id + "v").textContent = "0";
+    });
+    cfg.metaQuestions.forEach(function (m) {
+      if (m.type === "select") document.getElementById(m.id).value = "";
+    });
+    try { localStorage.removeItem(STORE_KEY); } catch (err) {}
+    updateProgress();
+    showTab("intro");
+  });
+
+  /* ================= 复盘页 ================= */
+  document.getElementById("btn-hist-refresh").addEventListener("click", loadHistory);
+
+  function loadHistory() {
+    var hint = document.getElementById("hist-hint");
+    var list = document.getElementById("hist-list");
+    var detail = document.getElementById("hist-detail");
+    detail.style.display = "none";
+    if (fileMode) {
+      hint.innerHTML = "当前是直接打开文件模式，没有数据库。运行 <code>python server.py</code> 并从 " +
+        "<code>http://127.0.0.1:8090</code> 打开本页，即可保存与复盘历次记录。";
+      list.innerHTML = "";
+      document.getElementById("hist-trend").innerHTML = "";
+      return;
+    }
+    hint.textContent = "读取中…";
+    api("/api/attempts").then(function (r) { return r.json(); }).then(function (rows) {
+      histCache = rows;
+      renderTrend(rows);
+      if (!rows.length) {
+        hint.textContent = "还没有记录。做完一次测评并在「完成」页保存后，这里会出现趋势图与错题回顾。";
+        list.innerHTML = "";
+        return;
+      }
+      hint.textContent = "共 " + rows.length + " 次记录，点击任意一行查看本次详情与错题回顾。";
+      list.innerHTML = rows.map(function (r) {
+        var pct = r.objective_total ? Math.round(r.objective_score / r.objective_total * 100) : 0;
+        var finalTxt = r.final_score != null
+          ? ' <span class="tag">批改后 ' + r.final_score + " / " + scoredTotal() + "</span>"
+          : ' <span class="tag">待批改</span>';
+        return '<div class="hist-row" data-id="' + r.id + '">' +
+          '<b>#' + r.id + "</b><span>" + esc(r.created_at) + "</span>" +
+          '<span class="tag">客观 ' + r.objective_score + " / " + r.objective_total + "（" + pct + "%）</span>" +
+          finalTxt +
+          '<span class="muted">用时' + r.minutes_spent + " 分钟 · 答了 " + r.answered_total + "/" + r.total_questions + " 题 · v" + esc(r.quiz_version) + "</span></div>";
+      }).join("");
+    }).catch(function () {
+      hint.textContent = "读取失败：后端未启动？请运行 python server.py 后刷新。";
+    });
+  }
+
+  document.getElementById("hist-list").addEventListener("click", function (e) {
+    var row = e.target.closest(".hist-row");
+    if (row) openDetail(Number(row.getAttribute("data-id")));
+  });
+
+  function renderTrend(rows) {
+    var box = document.getElementById("hist-trend");
+    if (rows.length < 1) { box.innerHTML = ""; return; }
+    var asc = rows.slice().sort(function (a, b) { return a.id - b.id; });
+    var W = 640, H = 190, padL = 34, padR = 16, padT = 18, padB = 34;
+    var iw = W - padL - padR, ih = H - padT - padB;
+    function x(i) { return asc.length === 1 ? padL + iw / 2 : padL + i * iw / (asc.length - 1); }
+    function y(pct) { return padT + ih * (1 - pct / 100); }
+    function pts(getter) {
+      return asc.map(function (r, i) {
+        var v = getter(r);
+        return v == null ? null : { x: x(i), y: y(v), v: v, r: r };
+      }).filter(Boolean);
+    }
+    var obj = pts(function (r) { return r.objective_total ? Math.round(r.objective_score / r.objective_total * 100) : null; });
+    var fin = pts(function (r) { return r.final_score != null ? Math.round(r.final_score / scoredTotal() * 100) : null; });
+    var s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="历次得分趋势图">';
+    s += '<line x1="' + padL + '" y1="' + y(0) + '" x2="' + (W - padR) + '" y2="' + y(0) + '" style="stroke:var(--border)"/>';
+    s += '<line x1="' + padL + '" y1="' + y(50) + '" x2="' + (W - padR) + '" y2="' + y(50) + '" style="stroke:var(--border);opacity:.6"/>';
+    s += '<line x1="' + padL + '" y1="' + y(100) + '" x2="' + (W - padR) + '" y2="' + y(100) + '" style="stroke:var(--border);opacity:.6"/>';
+    s += '<text x="' + (padL - 6) + '" y="' + (y(0) + 4) + '" text-anchor="end" font-size="11" style="fill:var(--muted)">0</text>';
+    s += '<text x="' + (padL - 6) + '" y="' + (y(50) + 4) + '" text-anchor="end" font-size="11" style="fill:var(--muted)">50</text>';
+    s += '<text x="' + (padL - 6) + '" y="' + (y(100) + 4) + '" text-anchor="end" font-size="11" style="fill:var(--muted)">100%</text>';
+    function line(series, color) {
+      var out = "";
+      if (series.length > 1) {
+        out += '<polyline points="' + series.map(function (p) { return p.x + "," + p.y; }).join(" ") +
+               '" style="fill:none;stroke:' + color + ';stroke-width:2"/>';
+      }
+      series.forEach(function (p) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="4" style="fill:' + color + '"/>' +
+               '<text x="' + p.x + '" y="' + (p.y - 9) + '" text-anchor="middle" font-size="11" style="fill:var(--text)">' + p.v + "</text>" +
+               '<text x="' + p.x + '" y="' + (H - 12) + '" text-anchor="middle" font-size="11" style="fill:var(--muted)">#' + p.r.id + " " + esc(String(p.r.created_at).slice(5, 10)) + "</text>";
+      });
+      return out;
+    }
+    s += line(obj, "var(--primary)") + line(fin, "var(--ok)");
+    s += "</svg>";
+    box.innerHTML = '<div class="legend">' +
+      '<span><i class="dot" style="background:var(--primary)"></i>客观题得分率</span>' +
+      '<span><i class="dot" style="background:var(--ok)"></i>批改后总得分率</span></div>' +
+      '<div class="trend-wrap">' + s + "</div>";
+  }
+
+  function openDetail(id) {
+    var detail = document.getElementById("hist-detail");
+    detail.style.display = "";
+    detail.innerHTML = "<p class='muted'>加载中…</p>";
+    var prevId = null;
+    histCache.forEach(function (r) { if (r.id < id && (prevId === null || r.id > prevId)) prevId = r.id; });
+    var pDetail = api("/api/attempts/" + id).then(function (r) { return r.json(); });
+    var pPrev = prevId ? api("/api/attempts/" + prevId).then(function (r) { return r.json(); }) : Promise.resolve(null);
+    Promise.all([pDetail, pPrev]).then(function (arr) { renderDetail(arr[0], arr[1]); })
+      .catch(function () { detail.innerHTML = "<p class='muted'>加载失败。</p>"; });
+  }
+
+  function renderDetail(d, prev) {
+    var detail = document.getElementById("hist-detail");
+    var prevSec = {};
+    if (prev) prev.sections.forEach(function (s) { prevSec[s.section_id] = s; });
+
+    var h = "<h2>#" + d.id + " · " + esc(d.created_at) + " 详情</h2>";
+    h += '<div class="kv"><span class="k">题库版本</span><span>v' + esc(d.quiz_version) + "</span></div>" +
+         '<div class="kv"><span class="k">用时</span><span>' + d.minutes_spent + " 分钟</span></div>" +
+         '<div class="kv"><span class="k">完成度</span><span>' + d.answered_total + " / " + d.total_questions + " 题</span></div>" +
+         '<div class="kv"><span class="k">客观题</span><span>' + d.objective_score + " / " + d.objective_total +
+         (d.final_score != null ? "，批改后总正确 " + d.final_score + " / " + scoredTotal() : "，待批改") + "</span></div>" +
+         (d.review_notes ? '<div class="kv"><span class="k">批改备注</span><span>' + esc(d.review_notes) + "</span></div>" : "");
+
+    h += "<h3>各板块得分" + (prev ? "（对比 #" + prev.id + "）" : "") + "</h3>";
+    d.sections.forEach(function (s) {
+      var pct = s.total ? Math.round(s.correct / s.total * 100) : 0;
+      var deltaHtml = "";
+      var p = prevSec[s.section_id];
+      if (p && p.correct != null) {
+        var diff = s.correct - p.correct;
+        var cls = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+        var txt = diff > 0 ? "+" + diff : diff < 0 ? String(diff) : "持平";
+        deltaHtml = ' <span class="delta ' + cls + '">' + txt + "</span>";
+      }
+      h += '<div class="score-row"><div>' + esc(s.section_name) + " 客观题 " + s.correct + " / " + s.total + deltaHtml + "</div>" +
+           '<div class="bar"><div style="width:' + pct + '%"></div></div></div>';
+    });
+
+    h += "<h3>客观题错题回顾（附答案解析）</h3>";
+    var hasWrong = false;
+    allQuestions().forEach(function (q) {
+      if (q.type === "short") return;
+      var v = d.payload.answers ? d.payload.answers[q.id] : null;
+      if (!v) return;
+      if (v !== q.answer) {
+        hasWrong = true;
+        h += '<div class="wq"><div>' + esc(q.stem) + "</div>" +
+             '<div>你的答案：<b>' + esc(letterText(q, v)) + "</b>　正确答案：<b style='color:var(--ok)'>" + esc(letterText(q, q.answer)) + "</b></div>" +
+             (q.reference ? '<div class="ref">解析：' + esc(q.reference) + "</div>" : "") + "</div>";
+      }
+    });
+    if (!hasWrong) h += '<p class="muted">本次已答的客观题全部正确。</p>';
+
+    h += "<h3>简答题（结合解析自查 / 等待 ZCode 批改）</h3>";
+    var hasShort = false;
+    allQuestions().forEach(function (q) {
+      if (q.type !== "short") return;
+      var v = d.payload.answers ? d.payload.answers[q.id] : null;
+      if (!v) return;
+      hasShort = true;
+      h += '<div class="wq"><div>' + esc(q.stem) + "</div>" +
+           '<div class="ref">你的回答：' + esc(v) + "</div>" +
+           (q.reference ? '<div class="ref">参考要点：' + esc(q.reference) + "</div>" : "") + "</div>";
+    });
+    if (!hasShort) h += '<p class="muted">本次没有作答简答题。</p>';
+
+    h += "<h3>当时的自评与偏好</h3><div class='kv'>";
+    cfg.selfAssessment.forEach(function (it) {
+      h += '<span class="tag">' + esc(it.label) + " " + (d.payload.answers ? d.payload.answers[it.id] : 0) + "/5</span> ";
+    });
+    h += "</div>";
+    cfg.metaQuestions.forEach(function (m) {
+      var v = d.payload.answers ? d.payload.answers[m.id] : null;
+      if (v) h += '<div class="kv"><span class="k">' + esc(m.label) + "</span><span>" + esc(v) + "</span></div>";
+    });
+    if (d.payload.answers && d.payload.answers[cfg.extraQuestion.id]) {
+      h += '<div class="kv"><span class="k">备注</span><span>' + esc(d.payload.answers[cfg.extraQuestion.id]) + "</span></div>";
+    }
+
+    h += "<h3>回填批改结果</h3>" +
+         '<p class="muted">ZCode 批改后（或自己复盘后），把最终正确数与备注记录进来，趋势图会多一条绿色线。</p>' +
+         '<div class="row"><label class="muted" for="rv-score">最终正确数（满分 ' + scoredTotal() + "）</label>" +
+         '<input type="number" id="rv-score" min="0" max="' + scoredTotal() + '" value="' + (d.final_score != null ? d.final_score : "") + '">' +
+         '<button class="primary" id="rv-save" data-id="' + d.id + '" type="button">保存批改结果</button>' +
+         '<button class="danger" id="rv-del" data-id="' + d.id + '" type="button">删除本次记录</button>' +
+         '<button class="ghost" id="rv-back" type="button">← 返回列表</button></div>' +
+         '<div style="margin-top:8px"><label class="muted" for="rv-notes">批改备注</label>' +
+         '<textarea id="rv-notes" rows="2">' + esc(d.review_notes || "") + "</textarea></div>" +
+         "<p id='rv-status' class='muted'></p>";
+
+    detail.innerHTML = h;
+
+    document.getElementById("rv-save").addEventListener("click", function () {
+      var v = document.getElementById("rv-score").value;
+      var status = document.getElementById("rv-status");
+      status.style.color = "var(--muted)";
+      status.textContent = "保存中…";
+      api("/api/attempts/" + d.id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          finalScore: v === "" ? null : Number(v),
+          reviewNotes: document.getElementById("rv-notes").value
+        })
+      }).then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        status.style.color = "var(--ok)";
+        status.textContent = "已保存。刷新记录后趋势图会更新。";
+        loadHistory();
+      }).catch(function () {
+        status.style.color = "var(--danger)";
+        status.textContent = "保存失败。";
+      });
+    });
+    document.getElementById("rv-del").addEventListener("click", function () {
+      var b = document.getElementById("rv-del");
+      if (b.getAttribute("data-armed") !== "1") {
+        b.setAttribute("data-armed", "1"); b.textContent = "再点一次确认删除";
+        setTimeout(function () { b.removeAttribute("data-armed"); b.textContent = "删除本次记录"; }, 4000);
+        return;
+      }
+      api("/api/attempts/" + d.id, { method: "DELETE" }).then(function () {
+        detail.style.display = "none";
+        loadHistory();
+      });
+    });
+    document.getElementById("rv-back").addEventListener("click", function () {
+      detail.style.display = "none";
+      loadHistory();
+    });
+  }
+
+  function letterText(q, letters) {
+    if (!letters) return "（未答）";
+    return letters.split("").map(function (L) {
+      var i = L.charCodeAt(0) - 97;
+      var opt = (q.options || [])[i];
+      return L + ". " + (opt == null ? "" : opt);
+    }).join("；");
+  }
+
+  /* ---------- 启动 ---------- */
+  render();
+  loadState();
+  collect();
+  updateProgress();
+  showTab("intro");
+})();
+</script>
+</body>
+</html>
